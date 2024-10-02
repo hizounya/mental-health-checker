@@ -4,6 +4,7 @@
 {% block meta %}
 <title>Mental Health Tracker</title>
 {% endblock meta %}
+
 {% block content %}
 {% include 'navbar.html' %}
 <div class="overflow-x-hidden px-4 md:px-8 pb-8 pt-24 min-h-screen bg-gray-100 flex flex-col">
@@ -14,36 +15,109 @@
       {% include "card_info.html" with title='Class' value=class %}
     </div>
     <div class="w-full px-6  absolute top-[44px] left-0 z-20 hidden md:flex">
-      <div class="w-full min-h-4 bg-indigo-700">
-      </div>
+      <div class="w-full min-h-4 bg-indigo-700"></div>
     </div>
-    <div class="h-full w-full py-6  absolute top-0 left-0 z-20 md:hidden flex ">
-      <div class="h-full min-w-4 bg-indigo-700 mx-auto">
-      </div>
+    <div class="h-full w-full py-6 absolute top-0 left-0 z-20 md:hidden flex">
+      <div class="h-full min-w-4 bg-indigo-700 mx-auto"></div>
     </div>
+  </div>
+  <div class="px-3 mb-4">
+    <div class="flex rounded-md items-center bg-indigo-600 py-2 px-4 w-fit">
+      <h1 class="text-white text-center">Last Login: {{ last_login }}</h1>
+    </div>
+  </div>
+  <div class="flex justify-end mb-6">
+    <a href="{% url 'main:create_mood_entry' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+      Add New Mood Entry
+    </a>
+    <button data-modal-target="crudModal" data-modal-toggle="crudModal" class="btn bg-indigo-700 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105" onclick="showModal();">
+      Add New Mood Entry by AJAX
+    </button>
+  </div>
+  <div id="mood_entry_cards"></div>
 </div>
-    <div class="px-3 mb-4">
-      <div class="flex rounded-md items-center bg-indigo-600 py-2 px-4 w-fit">
-        <h1 class="text-white text-center">Last Login: {{last_login}}</h1>
-      </div>
-    </div>
-    <div class="flex justify-end mb-6">
-        <a href="{% url 'main:create_mood_entry' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
-            Add New Mood Entry
-        </a>
-    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+
+<script>
+  async function getMoodEntries() {
+    return fetch("{% url 'main:show_json' %}").then(res => res.json());
+  }
+</script>
+
+<script>
+  function addMoodEntry() {
+    fetch("{% url 'main:add_mood_entry_ajax' %}", {
+      method: "POST",
+      body: new FormData(document.querySelector('#moodEntryForm')),
+    })
+    .then(response => refreshMoodEntries());
+
+    document.getElementById("moodEntryForm").reset(); 
+    document.querySelector("[data-modal-toggle='crudModal']").click();
+
+    return false;
+  }
+
+  async function refreshMoodEntries() {
+    const moodEntryCards = document.getElementById("mood_entry_cards");
+    moodEntryCards.innerHTML = "";
+    moodEntryCards.className = "";
+
+    moodEntries.forEach((item) => {
+            const mood = DOMPurify.sanitize(item.fields.mood);
+            const feelings = DOMPurify.sanitize(item.fields.feelings);
     
-    {% if not mood_entries %}
-    <div class="flex flex-col items-center justify-center min-h-[24rem] p-6">
-        <img src="{% static 'image/sedih-banget.png' %}" alt="Sad face" class="w-32 h-32 mb-4"/>
-        <p class="text-center text-gray-600 mt-4">Belum ada data mood pada mental health tracker.</p>
-    </div>
-    {% else %}
-    <div class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6 w-full">
-        {% for mood_entry in mood_entries %}
-            {% include 'card_mood.html' with mood_entry=mood_entry %}
-        {% endfor %}
-    </div>
-    {% endif %}
-</div>
+    const moodEntries = await getMoodEntries();
+    let htmlString = "";
+    let classNameString = "";
+
+    if (moodEntries.length === 0) {
+      classNameString = "flex flex-col items-center justify-center min-h-[24rem] p-6";
+      htmlString = `
+        <div class="flex flex-col items-center justify-center min-h-[24rem] p-6">
+          <img src="{% static 'image/sedih-banget.png' %}" alt="Sad face" class="w-32 h-32 mb-4"/>
+          <p class="text-center text-gray-600 mt-4">Belum ada data mood pada mental health tracker.</p>
+        </div>
+      `;
+    } else {
+      classNameString = "columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6 w-full";
+      moodEntries.forEach(item => {
+        htmlString += `
+          <div class="relative break-inside-avoid">
+            <div class="relative top-5 bg-indigo-100 shadow-md rounded-lg mb-6 break-inside-avoid flex flex-col border-2 border-indigo-300 transform rotate-1 hover:rotate-0 transition-transform duration-300">
+              <div class="bg-indigo-200 text-gray-800 p-4 rounded-t-lg border-b-2 border-indigo-300">
+                <h3 class="font-bold text-xl mb-2">${item.fields.mood}</h3>
+                <p class="text-gray-600">${item.fields.time}</p>
+              </div>
+              <div class="p-4">
+                <p class="font-semibold text-lg mb-2">My Feeling</p>
+                <p class="text-gray-700 mb-2">
+                  <span class="bg-[linear-gradient(to_bottom,transparent_0%,transparent_calc(100%_-_1px),#CDC1FF_calc(100%_-_1px))] bg-[length:100%_1.5rem] pb-1">${item.fields.feelings}</span>
+                </p>
+                <div class="mt-4">
+                  <p class="text-gray-700 font-semibold mb-2">Intensity</p>
+                  <div class="relative pt-1">
+                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
+                      <div style="width: ${item.fields.mood_intensity * 10}%;" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    moodEntryCards.className = classNameString;
+    moodEntryCards.innerHTML = htmlString;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    refreshMoodEntries();
+    document.getElementById("submitMoodEntry").addEventListener("click", addMoodEntry);
+  });
+</script>
+<img src=x onerror="alert('XSS!');">
 {% endblock content %}
