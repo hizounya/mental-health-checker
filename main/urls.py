@@ -23,5 +23,6 @@ urlpatterns = [
     path('register/', register, name='register'),
     path('login/', login_user, name='login'),
     path('logout/', logout_user, name='logout'),
+    path('create-flutter/', create_mood_flutter, name='create_mood_flutter'),
 
 ]
